@@ -1,0 +1,95 @@
+---
+- name: TEST
+  hosts: all
+  become: yes
+  become_user: root
+
+ 
+  tasks:
+      - name: Install aptitude using apt
+        apt: name=aptitude state=latest update_cache=yes force_apt_get=yes
+
+      - name: Install required system packages
+        apt: name={{ item }} state=latest update_cache=yes
+        loop: [ 'apt-transport-https', 'ca-certificates', 'curl', 'software-properties-common', 'python3-pip', 'virtualenv', 'python3-setuptools']
+        
+      - name: Add Docker GPG apt Key
+        apt_key:
+          url: https://download.docker.com/linux/ubuntu/gpg
+          state: present
+
+      - name: Add Docker Repository
+        apt_repository:
+          repo: deb https://download.docker.com/linux/ubuntu bionic stable
+          state: present
+          update_cache: yes
+ 
+      - name: Update apt and install docker-ce
+        apt: 
+          update_cache: yes 
+          name: docker-ce 
+          state: latest
+
+      - name: Install Docker Module for Python
+        pip:
+          name: 
+            - docker
+            - docker-compose    
+
+      - name: Add docker group
+        user:
+           name: "ubuntu"
+           group: "docker"
+           append: yes
+      
+      - name: Install docker-compose
+        get_url: 
+           url : "https://github.com/docker/compose/releases/download/1.27.4/docker-compose-Linux-x86_64"
+           dest: /usr/local/bin/docker-compose
+           mode: 'a+x'
+           force: yes
+     
+      - name: Install java
+        apt:
+          name: openjdk-8-jdk
+          state: present
+ 
+ 
+      - name: For Jenkins-master
+        block:
+         - name: Create directory
+           file:
+             state: directory
+             owner: 1000
+             group: 1000
+             path: /share/jenkins
+ 
+         - name: Pull default Docker image
+           docker_image:
+             name: "jenkins/jenkins:lts"
+             source: pull
+                
+         - name: Create default containers
+           docker_container:
+             name: "jenkins_server"
+             image: "jenkins/jenkins:lts"
+             ports:
+                  - "8989:8080"
+                  - "50000:50000"
+             volumes:
+                  - "/share/jenkins:/var/jenkins_home"
+                  - "/var/run/docker.sock:/var/run/docker.sock" 
+             state: started
+
+
+         - pause: seconds=45
+
+         
+         - name: Looking for admin password
+           shell: docker exec `docker ps | grep jenkins | awk '{ print $1}' ` cat /var/jenkins_home/secrets/initialAdminPassword
+           register: result      
+
+         - name: Show admin pass
+           debug:
+                 var: result.stdout 
+        when: ansible_hostname == 'ip-172-31-16-10'

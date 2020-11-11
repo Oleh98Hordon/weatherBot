@@ -1,0 +1,10 @@
+version: '3'
+
+services:
+    python:
+        build: 
+            context: .
+        volumes:
+           - ./weatherbot:/weatherbot 
+           - /var/run/docker.sock:/var/run/docker.sock
+        tty: true

@@ -1,0 +1,7 @@
+access_key = "****"
+secret_key = "****"
+key_name = "****"
+region = "****"
+subnet_id = "****"
+ami = "****"
+instance_type = "t2.micro"
